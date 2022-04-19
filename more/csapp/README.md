@@ -1,0 +1,33 @@
+课程官网
+
+https://www.cs.cmu.edu/afs/cs/academic/class/15213-f20/www/index.html
+
+
+
+b 站视频对应的是（课程安排有差异）
+
+https://www.cs.cmu.edu/afs/cs/academic/class/15213-f15/www/index.html
+
+
+
+课程上演示的代码
+
+~/www/code
+
+
+
+lab 下载
+
+http://csapp.cs.cmu.edu/3e/labs.html
+
+
+
+
+
+lab/
+
+课程 lab
+
+\*/
+
+跟着课上敲的一些代码
