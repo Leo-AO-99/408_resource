@@ -29,3 +29,15 @@ handout.
 
 
 先阅读preview里面的attacklab.pdf
+
+ans应该8个字节为一行，为了阅读方便，格式比较随意
+
+
+
+参考
+
+https://zhuanlan.zhihu.com/p/60724948
+
+https://www.bilibili.com/read/cv2946862
+
+感恩

