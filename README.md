@@ -1,2 +1,3 @@
 # 408_resource
-傻逼才搞cs
+
+就搞 cs
